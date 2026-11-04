@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 import ai_client
-from schemas import Reponse, Request
+from schemas import Reponse, Request, Cle
 
 app = FastAPI()
 
@@ -12,3 +12,8 @@ async def raine():
 async def repondre(request:Request):
     reponse = ai_client.repondre(request.message)
     return Reponse(reponse=reponse)
+
+@app.post('/config/cle')
+async def Cle_Api(cle: Cle):
+    ai_client.api(cle.cle)
+    return {"Statu":"OK"}

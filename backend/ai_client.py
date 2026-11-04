@@ -1,12 +1,18 @@
 from openai import OpenAI
-from config import Api_Key, Url, Model
+from config import Url, Model
 
-client = OpenAI(
-    api_key=Api_Key,
-    base_url=Url,
-)
+client = None
+
+def api(cle):
+    global client   # pour modifier client
+    client = OpenAI(
+        api_key=cle,
+        base_url=Url,
+    )
 
 def repondre(message):
+    if client is None:
+        raise RuntimeError("Cle vide")
     completion=client.chat.completions.create(
       model=Model,
       messages=[{"role":"user","content":message}],
