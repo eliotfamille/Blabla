@@ -1,10 +1,14 @@
+from collections.abc import Sequence
+from typing import cast
 from openai import OpenAI, NotFoundError
+from openai.types.chat import ChatCompletionMessageParam
 from config import NVIDIA_URL, NVIDIA_API_KEY
+from conversation import Message
 
 
 class NVIDIAClient:
     def __init__(self):
-        self._client: OpenAI | None = None  # initialisé à None
+        self._client: OpenAI | None = None  # initialise a None
 
     def set_api_key(self, api_key: str):    # Definir cle API
         self._client = OpenAI(
@@ -12,7 +16,7 @@ class NVIDIAClient:
             base_url=NVIDIA_URL,
         )
 
-    def get_client(self):    # Obtenir ou creer client.
+    def get_client(self):    # Obtenir ou creer client
         if self._client is None:
             if not NVIDIA_API_KEY:
                 raise RuntimeError("Cle API NVIDIA non configuree.")
@@ -37,7 +41,6 @@ class NVIDIAClient:
             'classif',
             'detector',
             'calibration',
-            'guard',
         ]
 
         chat_models = []
@@ -49,8 +52,7 @@ class NVIDIAClient:
         print("Modeles chat disponibles (nvidia):", chat_models)
         return chat_models
 
-    def chat(self, model: str, message: str) -> str:
-        """Generer reponse chat."""
+    def chat(self, model: str, message: str) -> str:    # Generer reponse chat
         client = self.get_client()
         try:
             completion = client.chat.completions.create(  # appel api nvidia
@@ -77,6 +79,30 @@ class NVIDIAClient:
         except Exception:  # pylint: disable=broad-except
             return "[Erreur] Erreur inattendue"
 
+    def chat_with_history(self, model: str, history: Sequence[Message]):   # Chat avec historique
+        client = self.get_client()
+        try:
+            completion = client.chat.completions.create(
+                model=model,
+                messages=cast(list[ChatCompletionMessageParam], history),   # cast pour pyright
+                temperature=1, top_p=0.95, max_tokens=10384,
+                extra_body={"chat_template_kwargs": {"enable_thinking": True}},
+                stream=True
+            )
+            complet = ""
+            for chunk in completion:
+                if not chunk.choices:
+                    continue
+                reasoning = getattr(chunk.choices[0].delta, "reasoning_content", None)
+                if reasoning:
+                    print(reasoning, end="")
+                if chunk.choices[0].delta.content is not None:
+                    complet += chunk.choices[0].delta.content
+            return complet or "sans reponse"
+        except NotFoundError:
+            return f"[Erreur] Le modele '{model}' n'est pas disponible pour le chat."
+        except Exception:
+            return "[Erreur] Erreur inattendue"
 
 # Instance globale
 nvidia_client = NVIDIAClient()

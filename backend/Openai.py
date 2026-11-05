@@ -1,10 +1,14 @@
+from collections.abc import Sequence
+from typing import cast
 from openai import OpenAI, NotFoundError
+from openai.types.chat import ChatCompletionMessageParam
 from config import OPENAI_API_KEY, OPENAI_BASE_URL
+from conversation import Message
 
 
 class OpenAIClient:
     def __init__(self):
-        self._client: OpenAI | None = None  # initialisé à None
+        self._client: OpenAI | None = None  # initialise a None
 
     def set_api_key(self, api_key: str):    # Definir cle API
         self._client = OpenAI(
@@ -19,7 +23,7 @@ class OpenAIClient:
             self._client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
         return self._client
 
-    def list_models(self): # list les modeles
+    def list_models(self):  # Lister modeles chat disponibles
         client = self.get_client()
         models = client.models.list()
         model_ids = sorted(m.id for m in models)
@@ -37,7 +41,6 @@ class OpenAIClient:
             'classif',
             'detector',
             'calibration',
-            'guard',
         ]
 
         chat_models = []
@@ -55,6 +58,9 @@ class OpenAIClient:
             completion = client.chat.completions.create(  # appel api openai
                 model=model,
                 messages=[{"role": "user", "content": message}],
+                temperature=1,
+                top_p=0.95,
+                max_tokens=10384,
                 stream=True,
             )
             complet = ""
@@ -69,6 +75,28 @@ class OpenAIClient:
         except Exception:
             return "[Erreur] Erreur inattendue"
 
+    def chat_with_history(self, model: str, history: Sequence[Message]):    # Chat avec historique
+        client = self.get_client()
+        try:
+            completion = client.chat.completions.create(
+                model=model,
+                messages=cast(list[ChatCompletionMessageParam], history),   # cast pour pyright
+                temperature=1,
+                top_p=0.95,
+                max_tokens=10384,
+                stream=True,
+            )
+            complet = ""
+            for chunk in completion:
+                if not chunk.choices:
+                    continue
+                if chunk.choices[0].delta.content is not None:
+                    complet += chunk.choices[0].delta.content
+            return complet or "sans reponse"
+        except NotFoundError:
+            return f"[Erreur] Le modele '{model}' n'est pas disponible pour le chat."
+        except Exception:
+            return "[Erreur] Erreur inattendue"
 
 # Instance globale
 openai_client = OpenAIClient()

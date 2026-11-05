@@ -25,13 +25,13 @@ class ChatApp(App):
         self.saisie = TextInput(multiline=False, size_hint_y=None, height=40)
         self.saisie.bind(on_text_validate=self.envoyer)     # touche entree
 
-        # Selecteur de provider en haut
+        # Selecteur de provider
         self.provider_spinner = Spinner(
             text="nvidia",
             values=PROVIDERS,
             size_hint_x=0.3,
         )
-        self.provider_spinner.bind(text=self.on_provider_change)
+        self.provider_spinner.bind(text=self.on_provider_change)    # declenche au changement
 
         self.liste_modeles = ListeModeles(afficher=self.ajouter, get_provider_callback=self.get_provider_actuel)    # callback chat
 
@@ -50,11 +50,11 @@ class ChatApp(App):
         root.add_widget(self.saisie)
         root.add_widget(barre)
 
+        self.conversation_id = None     # conversation active
         Clock.schedule_once(lambda dt: self.initialiser())    # init au demarrage
         return root
 
-    def initialiser(self):
-        """Initialise le provider et charge les modeles."""
+    def initialiser(self):  # provider + modeles au demarrage
         try:
             provider = api_client.get_provider()
             self.provider_spinner.text = provider
@@ -65,8 +65,7 @@ class ChatApp(App):
     def get_provider_actuel(self) -> str:
         return self.provider_spinner.text
 
-    def on_provider_change(self, spinner, provider):
-        """Change le provider actif et recharge les modeles."""
+    def on_provider_change(self, spinner, provider):    # change provider et recharge modeles
         def appliquer():
             try:
                 api_client.definir_provider(provider)
@@ -74,8 +73,8 @@ class ChatApp(App):
                 texte = f"Fournisseur change : {provider}"
             except Exception as e:
                 texte = f"[erreur] {e}"
-            Clock.schedule_once(lambda dt: self.ajouter(texte))
-        threading.Thread(target=appliquer, daemon=True).start()
+            Clock.schedule_once(lambda dt: self.ajouter(texte))     # retour thread principal
+        threading.Thread(target=appliquer, daemon=True).start()     # fil separe
 
     def ouvrir_cle(self, *_):
         popup = ClePopup(afficher=self.ajouter, apres_succes=self.liste_modeles.charger)
@@ -93,13 +92,20 @@ class ChatApp(App):
         try:
             provider = self.get_provider_actuel()
             model = self.liste_modeles.text if self.liste_modeles.text not in ("Chargement...", "Aucun modele") else None
-            reponse = api_client.envoyer(message, provider, model)
+            data = api_client.envoyer(message, provider, model, self.conversation_id)   # envoi avec id
+            self.conversation_id = data["conversation_id"]      # garde l'id
+            reponse = data["reponse"]
         except Exception as e:
             reponse = f"[erreur] {e}"
         Clock.schedule_once(lambda dt: self.ajouter(f"IA : {reponse}"))     # retour thread principal
 
     def ajouter(self, texte):
         self.affichage.text += texte + "\n\n"       # ajoute au chat
+
+    def nouvelle_conversation(self, *_):    # reinitialise conversation
+        self.conversation_id = None
+        self.affichage.text = ""
+        self.ajouter("[Nouvelle conversation]")
 
 if __name__ == "__main__":
     ChatApp().run()
