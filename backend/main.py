@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import ai_client
 from schemas import Reponse, Request, Cle, Modele
 

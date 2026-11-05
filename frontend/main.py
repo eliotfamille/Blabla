@@ -23,10 +23,10 @@ class ChatApp(App):
         self.saisie.bind(on_text_validate=self.envoyer)
 
         self.modele_actuel = None
-        self.liste_modeles = Spinner(text="Chargement...", values=[], size_hint_x=0.5)
+        self.liste_modeles = Spinner(text="Chargement...", values=["Chargement..."], size_hint_x=0.5)
         self.liste_modeles.bind(text=self.on_modele_choisi)
 
-        bouton_cle = Button(text="Clé API")
+        bouton_cle = Button(text="Cle API")
         bouton_cle.bind(on_press=self.ouvrir_cle)
         bouton_envoyer = Button(text="Envoyer")
         bouton_envoyer.bind(on_press=self.envoyer)
@@ -39,6 +39,8 @@ class ChatApp(App):
         root.add_widget(scroll)
         root.add_widget(self.saisie)
         root.add_widget(barre)
+        # Charger les modèles au démarrage
+        Clock.schedule_once(lambda dt: self.debut())
         return root
 
     def envoyer(self, *_):
@@ -86,7 +88,9 @@ class ChatApp(App):
     def appeler_cle(self, cle):
         try:
             api_client.enregistreCle(cle)
-            texte = "Clé API enregistrée."
+            texte = "Cle API enregistree."
+            # Recharger les modèles maintenant que la clé est configurée
+            threading.Thread(target=self.charger_modeles, daemon=True).start()
         except Exception as e:
             texte = f"[erreur] {e}"
         Clock.schedule_once(lambda dt: self.ajouter(texte))
@@ -98,13 +102,13 @@ class ChatApp(App):
         try:
             data = api_client.lister_modeles()
         except Exception as e:
-            Clock.schedule_once(lambda dt: self.ajouter(f"[erreur modèles] {e}"))
+            Clock.schedule_once(lambda dt, err=e: self.ajouter(f"[erreur modeles] {err}"))
             return
-        Clock.schedule_once(lambda dt: self.maj_modeles(data["modeles"], data["actuel"]))
+        Clock.schedule_once(lambda dt, d=data: self.maj_modeles(d["modeles"], d["actuel"]))
 
     def maj_modeles(self, liste, actuel):
         self.liste_modeles.values = liste
-        choix = actuel if actuel in liste else (liste[0] if liste else "Aucun modèle")
+        choix = actuel if actuel in liste else (liste[0] if liste else "Aucun modele")
         self.modele_actuel = choix
         self.liste_modeles.text = choix
 
@@ -117,7 +121,7 @@ class ChatApp(App):
     def appliquer_modele(self, nom):
         try:
             api_client.choisir_modele(nom)
-            texte = f"Modèle choisi : {nom}"
+            texte = f"Modele choisi : {nom}"
         except Exception as e:
             texte = f"[erreur] {e}"
         Clock.schedule_once(lambda dt: self.ajouter(texte))
