@@ -9,3 +9,6 @@ class Reponse(BaseModel):
 
 class Cle(BaseModel):
     cle: str = Field(min_length=1)  # refuse si vide
+
+class Modele(BaseModel):
+    modele: str = Field(min_length=1)

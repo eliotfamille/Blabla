@@ -20,3 +20,12 @@ def envoyer(message: str):
 def enregistreCle(cle: str):
     r = httpx.post(f"{url}/config/cle", json={"cle": cle}, timeout=10)
     verifier(r)
+
+def lister_modeles() -> dict:
+    r = httpx.get(f"{url}/models", timeout=30)
+    verifier(r)
+    return r.json()
+
+def choisir_modele(nom: str) -> None:
+    r = httpx.post(f"{url}/config/modele", json={"modele": nom}, timeout=10)
+    verifier(r)

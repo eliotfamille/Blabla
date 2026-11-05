@@ -2,13 +2,25 @@ from openai import OpenAI
 from config import Url, Model
 
 client = None
-
+model = Model
 def api(cle):
     global client   # pour modifier client
     client = OpenAI(
         api_key=cle,
         base_url=Url,
     )
+def list_model():
+    if client is None:
+        raise RuntimeError("Clé API non configurée. Utilise le bouton Clé API.")
+    print(m.id for m in client.models.list())
+    return sorted(m.id for m in client.models.list())
+
+def get_model():
+    return model
+
+def set_model(nom):
+    global model
+    model = nom
 
 def repondre(message):
     if client is None:
@@ -18,7 +30,7 @@ def repondre(message):
       messages=[{"role":"user","content":message}],
       temperature=1,
       top_p=0.95,
-      max_tokens=16384,
+      max_tokens=10384,
       extra_body={"chat_template_kwargs":{"enable_thinking":True}},
       stream=True
     )

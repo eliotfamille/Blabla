@@ -7,7 +7,8 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
 import api_client
-from kivy.uix.popup import Popup
+from kivy.uix.popup import Popup    # fenetre flottant
+from kivy.uix.spinner import Spinner #  list deroulant
 
 class ChatApp(App):
     def build(self):
@@ -21,11 +22,17 @@ class ChatApp(App):
         self.saisie = TextInput(multiline=False, size_hint_y=None, height=40)
         self.saisie.bind(on_text_validate=self.envoyer)
 
-        barre = BoxLayout(size_hint_y=None, height=50, spacing=10)
+        self.modele_actuel = None
+        self.liste_modeles = Spinner(text="Chargement...", values=[], size_hint_x=0.5)
+        self.liste_modeles.bind(text=self.on_modele_choisi)
+
         bouton_cle = Button(text="Clé API")
         bouton_cle.bind(on_press=self.ouvrir_cle)
         bouton_envoyer = Button(text="Envoyer")
         bouton_envoyer.bind(on_press=self.envoyer)
+
+        barre = BoxLayout(size_hint_y=None, height=50, spacing=10)
+        barre.add_widget(self.liste_modeles)
         barre.add_widget(bouton_cle)
         barre.add_widget(bouton_envoyer)
 
@@ -80,6 +87,37 @@ class ChatApp(App):
         try:
             api_client.enregistreCle(cle)
             texte = "Clé API enregistrée."
+        except Exception as e:
+            texte = f"[erreur] {e}"
+        Clock.schedule_once(lambda dt: self.ajouter(texte))
+
+    def debut(self):
+        threading.Thread(target=self.charger_modeles, daemon=True).start()
+
+    def charger_modeles(self):
+        try:
+            data = api_client.lister_modeles()
+        except Exception as e:
+            Clock.schedule_once(lambda dt: self.ajouter(f"[erreur modèles] {e}"))
+            return
+        Clock.schedule_once(lambda dt: self.maj_modeles(data["modeles"], data["actuel"]))
+
+    def maj_modeles(self, liste, actuel):
+        self.liste_modeles.values = liste
+        choix = actuel if actuel in liste else (liste[0] if liste else "Aucun modèle")
+        self.modele_actuel = choix
+        self.liste_modeles.text = choix
+
+    def on_modele_choisi(self, spinner, nom):
+        if nom == self.modele_actuel or nom not in spinner.values:
+            return
+        self.modele_actuel = nom
+        threading.Thread(target=self.appliquer_modele, args=(nom,), daemon=True).start()
+
+    def appliquer_modele(self, nom):
+        try:
+            api_client.choisir_modele(nom)
+            texte = f"Modèle choisi : {nom}"
         except Exception as e:
             texte = f"[erreur] {e}"
         Clock.schedule_once(lambda dt: self.ajouter(texte))

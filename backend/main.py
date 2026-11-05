@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 import ai_client
-from schemas import Reponse, Request, Cle
+from schemas import Reponse, Request, Cle, Modele
 
 app = FastAPI()
 
@@ -17,3 +17,17 @@ async def repondre(request:Request):
 async def Cle_Api(cle: Cle):
     ai_client.api(cle.cle)
     return {"Statu":"OK"}
+
+@app.get("/models")
+def modeles():
+    try:
+        return {"modeles": ai_client.list_model(), "actuel": ai_client.get_model()}
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=502, detail="Impossible de lister les modèles")
+
+@app.post("/config/modele")
+def definir_modele(req: Modele):
+    ai_client.set_model(req.modele)
+    return {"status": "ok"}
