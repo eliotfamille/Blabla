@@ -15,8 +15,32 @@ def list_model():
         raise RuntimeError("Clé API non configurée. Utilise le bouton Clé API.")
     models = client.models.list()
     model_ids = sorted(m.id for m in models)
-    print("Modèles disponibles:", model_ids)
-    return model_ids
+    
+    # Filtrer pour ne garder que les modèles de chat/language
+    exclude_keywords = [
+        'embed', 'embedding',      # modèles d'embedding
+        'vision', 'vlm', 'vl-',    # modèles vision
+        'guard', 'safety',         # modèles de sécurité/modération
+        'video', 'audio',          # vidéo/audio
+        'translate', 'riva',       # traduction/ASR
+        'parse',                   # parsing
+        'clip',                    # CLIP
+        'reward',                  # reward models
+        'rerank',                  # reranking
+        'classif',                 # classification
+        'detector',                # détecteurs
+        'calibration',             # calibration
+        'guard',                   # guard rails
+    ]
+    
+    chat_models = []
+    for mid in model_ids:
+        mid_lower = mid.lower()
+        if not any(kw in mid_lower for kw in exclude_keywords):
+            chat_models.append(mid)
+    
+    print("Modèles chat disponibles:", chat_models)
+    return chat_models
 
 def get_model():
     return model
